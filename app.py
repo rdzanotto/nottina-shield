@@ -268,13 +268,70 @@ details{border-top:1px solid #29364a;padding-top:7px}
 pre{max-height:230px;overflow:auto;white-space:pre-wrap;font-size:11px;color:#a7bad0}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.panels{grid-template-columns:1fr}}
 @media(max-width:700px){.shell{grid-template-columns:1fr}aside{padding:15px}nav{margin-top:12px;display:flex} .version{display:none}main{padding:20px}.grid{grid-template-columns:1fr 1fr}header{flex-direction:column;align-items:flex-start}.controls{flex-wrap:wrap}}
+
+/* Shield UI refresh — inspirado na hierarquia operacional do Gladius V2 */
+:root{--bg:#f5f7fb;--surface:#fff;--surface-alt:#f8fafc;--border:#e1e7f0;--fg:#17243b;--muted:#687a91;--accent:#2563eb;--accent-soft:#edf4ff;--sidebar:#fff;--field:#fff;--shadow:0 5px 24px rgba(30,45,75,.035);color-scheme:light}
+html[data-theme="dark"]{--bg:#0d1422;--surface:#141e30;--surface-alt:#101a2b;--border:#293850;--fg:#e7eefb;--muted:#98abc5;--accent:#6ca1ff;--accent-soft:#1b3151;--sidebar:#101a2b;--field:#101827;--shadow:none;color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
+aside{background:var(--sidebar);border-color:var(--border);padding:25px 16px;display:flex;flex-direction:column;min-height:100vh}
+.shell{grid-template-columns:258px minmax(0,1fr)}
+.brand{font-size:18px;letter-spacing:-.5px;color:var(--fg)}
+.brand-mark{border-radius:9px;background:#2563eb;box-shadow:none}
+.small{color:var(--muted);letter-spacing:.85px;font-size:10px}
+nav{margin-top:36px;gap:4px}
+nav a{padding:11px 13px;border-radius:8px;color:var(--muted);font-weight:550;font-size:13px;border:1px solid transparent;transition:background .15s ease,color .15s ease}
+nav a:hover{background:var(--surface-alt);color:var(--fg)}
+nav a.active{background:var(--accent-soft);color:var(--accent);border:1px solid transparent;font-weight:650}
+.version{position:static;margin-top:auto;padding:18px 9px 3px;color:var(--muted);border-color:var(--border);line-height:1.9}
+.version span,.version p{color:var(--muted)!important}
+main{padding:32px 38px;max-width:1700px}
+header{border-color:var(--border);padding-bottom:22px}
+h1{font-size:25px;font-weight:750;color:var(--fg);letter-spacing:-.8px}
+p,.panel .sub,.tile .desc,.tile .label,.status{color:var(--muted)}
+.controls{gap:8px;flex-wrap:wrap}
+.ghost{background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:9px 12px}
+.ghost:hover{background:var(--surface-alt)}
+.action{border:1px solid #2563eb;background:#2563eb;border-radius:8px;box-shadow:none}
+.grid{gap:14px;margin:24px 0}
+.tile,.panel{background:var(--surface);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow)}
+.tile{padding:20px 21px}.tile .num{color:var(--fg);font-size:30px}.tile .label{font-weight:600}
+.panel{padding:22px}.panel h2{font-size:15px;color:var(--fg);font-weight:700}
+.panels{gap:15px}
+.baseline{stroke:var(--border)}
+.flowbox{border:1px solid var(--border);background:var(--surface-alt);color:var(--fg)}
+.flowbox.shield{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.arrow{color:var(--muted)}
+td,th{border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-size:10px;font-weight:700}
+td{color:var(--fg)}
+code{color:var(--accent)}
+.login,.modal{background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:14px;box-shadow:0 20px 90px rgba(0,0,0,.22)}
+.login h2,.modal h2{color:var(--fg)}
+label{color:var(--fg);font-weight:600}
+input,select{background:var(--field);border:1px solid var(--border);color:var(--fg)}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.overlay{background:rgba(5,10,21,.66)}
+details,pre{border-color:var(--border);color:var(--muted)}
+.pill{background:#e9f7ef;color:#166534;border-color:#bee8cc}
+.pill.bad{background:#fff1f2;color:#9f1239;border-color:#fecdd3}
+html[data-theme="dark"] .pill{background:#102b23;color:#82deb0;border-color:#285743}
+html[data-theme="dark"] .pill.bad{background:#2c141c;color:#ff929b;border-color:#69313b}
+.tag{background:#e9f7ef;color:#176c44}
+html[data-theme="dark"] .tag{background:#163a2e;color:#76d9a7}
+.danger{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+html[data-theme="dark"] .danger{background:#421d29;color:#ffc0c6;border-color:#69394b}
+.theme-toggle{display:inline-flex;align-items:center;justify-content:center;min-width:108px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:700px){.shell{grid-template-columns:1fr}aside{min-height:auto;padding:15px}nav{margin-top:12px;flex-wrap:wrap}main{padding:19px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tile{padding:14px}.tile .num{font-size:24px}}
+@media(max-width:420px){.grid{grid-template-columns:1fr}.controls{width:100%}.controls button{flex:1}}
 </style></head>
 <body><div class="shell"><aside><div class="brand"><span class="brand-mark">◈</span><span>NOTTINA <span style="color:#5493ff">SHIELD</span></span></div>
 <div class="small" style="margin-top:13px">Inline DDoS Control Plane</div>
 <nav><a href="#overview" class="active">▦ &nbsp; Visão geral</a><a href="#rules">☷ &nbsp; Políticas &amp; regras</a><a href="#activity">◷ &nbsp; Auditoria</a></nav>
 <div class="version">POC ENVIRONMENT<br><span style="color:#b1c5df">Shield · Bridge L2</span><p style="margin-top:12px">AS64510 → AS64520 → AS64530</p></div></aside>
 <main><header><div><div class="small">SECURITY OPERATIONS / NETWORK DEFENSE</div><h1>Visão geral de mitigação</h1><p>Controle operacional · inspeção inline · observabilidade de políticas nftables</p></div>
-<div class="controls"><span id="status" class="pill bad">● Verificando Shield</span><button class="ghost" id="refresh">↻ Atualizar</button><button class="ghost" id="logout">Sair</button></div></header>
+<div class="controls"><span id="status" class="pill bad">● Verificando Shield</span><button class="ghost theme-toggle" id="theme-toggle" type="button" aria-label="Alternar tema">Tema claro</button><button class="ghost" id="refresh">↻ Atualizar</button><button class="ghost" id="logout">Sair</button></div></header>
 <section id="overview"><div class="grid">
 <div class="tile"><div class="label">Pacotes descartados</div><div class="num" id="drops">—</div><div class="desc">Contadores atuais, incluindo regra PoC legada</div></div>
 <div class="tile"><div class="label">Bytes descartados</div><div class="num" id="bytes">—</div><div class="desc">Ação DROP · regras gerenciadas</div></div>
@@ -301,6 +358,15 @@ pre{max-height:230px;overflow:auto;white-space:pre-wrap;font-size:11px;color:#a7
 <label>Porta destino (TCP/UDP)</label><input name="port" type="number" min="1" max="65535" value="8080">
 <div class="errors" id="rule-error"></div><button class="action">Aplicar regra DROP</button></form></div></div>
 <script>
+(function(){
+ const key='nottina-shield-theme';
+ let saved=null;
+ try{saved=localStorage.getItem(key)}catch(_){}
+ const initial=saved==='light'||saved==='dark'?saved:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+ function setTheme(theme){document.documentElement.setAttribute('data-theme',theme);const b=document.getElementById('theme-toggle');if(b){b.textContent=theme==='dark'?'☀ Tema claro':'☾ Tema escuro';b.setAttribute('aria-label','Ativar tema '+(theme==='dark'?'claro':'escuro'));}}
+ setTheme(initial);
+ document.getElementById('theme-toggle').addEventListener('click',function(){const next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';setTheme(next);try{localStorage.setItem(key,next)}catch(_){}});
+})();
 let csrf='',series=[],lastOk=false;
 const el=id=>document.getElementById(id);
 const fmt=x=>Number(x||0).toLocaleString('pt-BR');
