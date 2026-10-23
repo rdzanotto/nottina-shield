@@ -16,6 +16,7 @@ import subprocess
 import threading
 import time
 import urllib.parse
+import engineering
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -448,14 +449,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return True
     def do_GET(self):
         path=urllib.parse.urlsplit(self.path).path
-        if path=="/":
-            return self.send(200,HTML,"text/html")
+        if path=="/" or path.startswith("/app/"):
+            return self.send(200,Path(__file__).with_name("console.html").read_text(encoding="utf-8"),"text/html")
         if path=="/api/session":
             s=self.session()
             return self.send(200,{"csrf":s["csrf"],"user":ADMIN}) if s else self.send(401,{"error":"Login obrigatório"})
         if not self.auth():return
         if path=="/api/state":
             try:return self.send(200,stats())
+            except Exception as e:return self.send(503,{"error":str(e)})
+        if path.startswith("/api/v2/"):
+            try:
+                if path=="/api/v2/policies":
+                    engineering.reconcile(DB,fetch_state(),delete_rule)
+                    return self.send(200,{"data":engineering.policies(DB)})
+                if path=="/api/v2/telemetry":
+                    errors=engineering.record_interfaces(DB,remote)
+                    return self.send(200,{"interfaces":engineering.telemetry(DB),"errors":errors,"source":"real-linux-sysfs","sample_time":int(time.time())})
+                if path=="/api/v2/coverage":
+                    return self.send(200,{"data":engineering.coverage(DB),"source":"operator-declared-not-probed"})
+                m=re.fullmatch(r"/api/v2/policies/(\d+)/history",path)
+                if m:return self.send(200,{"data":engineering.history(DB,int(m[1]))})
             except Exception as e:return self.send(503,{"error":str(e)})
         self.send(404,{"error":"Não encontrado"})
     def do_POST(self):
@@ -479,6 +493,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 token=c["nottina"].value.split(".")[0]
                 SESSIONS.pop(token,None)
             return self.send(200,{"ok":True},extra={"Set-Cookie":"nottina=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"})
+        if path=="/api/v2/policies":
+            try:
+                pid=engineering.create_policy(DB,body,ADMIN,build_rule,add_rule)
+                return self.send(201,{"ok":True,"id":pid})
+            except (ValueError,TypeError,KeyError) as e:return self.send(400,{"error":str(e)})
+            except Exception as e:return self.send(503,{"error":str(e)})
+        if path=="/api/v2/coverage":
+            try:
+                engineering.upsert_coverage(DB,body)
+                audit("coverage.updated",json.dumps(body,ensure_ascii=False)[:500])
+                return self.send(200,{"ok":True})
+            except (ValueError,TypeError,KeyError) as e:return self.send(400,{"error":str(e)})
+        m=re.fullmatch(r"/api/v2/policies/(\d+)/restore",path)
+        if m:
+            try:return self.send(200,{"handle":engineering.restore(DB,int(m[1]),ADMIN,build_rule,add_rule)})
+            except ValueError as e:return self.send(400,{"error":str(e)})
+            except Exception as e:return self.send(503,{"error":str(e)})
         if path=="/api/rules":
             try:
                 handle=add_rule(body)
@@ -489,6 +520,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_DELETE(self):
         if not self.auth(True):return
         path=urllib.parse.urlsplit(self.path).path
+        m2=re.fullmatch(r"/api/v2/policies/(\d+)",path)
+        if m2:
+            try:
+                engineering.deactivate(DB,int(m2[1]),ADMIN,delete_rule)
+                return self.send(200,{"ok":True})
+            except ValueError as e:return self.send(400,{"error":str(e)})
+            except Exception as e:return self.send(503,{"error":str(e)})
         m=re.fullmatch(r"/api/rules/(\d+)",path)
         if not m:return self.send(404,{"error":"Não encontrado"})
         try:
@@ -501,5 +539,12 @@ if __name__=="__main__":
     if not SECRET or len(SECRET)<24 or not PASSWORD_HASH:
         raise SystemExit("Configure SESSION_SECRET (>=24 chars) e PASSWORD_HASH (PBKDF2 salt$hex).")
     dbconn().close()
+    engineering.connect(DB).close()
+    def expiry_worker():
+        while True:
+            try: engineering.reconcile(DB,fetch_state(),delete_rule)
+            except Exception as e: print("Reconciliation warning:",str(e),flush=True)
+            time.sleep(15)
+    threading.Thread(target=expiry_worker,daemon=True,name="policy-expiry").start()
     print(f"Nottina Shield Console — http://{HOST}:{PORT} → {USER}@{SHIELD}",flush=True)
     http.server.ThreadingHTTPServer((HOST,PORT),Handler).serve_forever()
