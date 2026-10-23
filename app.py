@@ -68,9 +68,12 @@ def ensure_table():
     remote("nft add table bridge " + TABLE)
     remote("nft 'add chain bridge " + TABLE + " forward { type filter hook forward priority -5; policy accept; }'")
 
-def raw_table():
-    p = remote("nft -j list table bridge " + TABLE)
-    return json.loads(p).get("nftables", [])
+def raw_table(table=TABLE, optional=False):
+    command = "nft -j list table bridge " + table
+    if optional:
+        command += " 2>/dev/null || true"
+    output = remote(command)
+    return json.loads(output).get("nftables", []) if output.strip() else []
 
 def expressions(rule):
     # Capture nft-generated expression for inspectable rule details.
@@ -82,11 +85,12 @@ def fetch_state():
         result = []
         with dbconn() as c:
             labels = {h:n for h,n in c.execute("select handle,name from rules")}
-        for entry in raw_table():
+        for entry in raw_table() + raw_table("turbo_poc_test", optional=True):
             if "rule" not in entry:
                 continue
             r = entry["rule"]
-            if r.get("table") != TABLE or r.get("chain") != "forward":
+            table_name = r.get("table")
+            if table_name not in (TABLE, "turbo_poc_test") or r.get("chain") != "forward":
                 continue
             pkts = byt = 0
             for expr in expressions(r):
@@ -95,8 +99,10 @@ def fetch_state():
                     pkts += int(counter.get("packets",0))
                     byt += int(counter.get("bytes",0))
             handle = int(r["handle"])
-            result.append({"handle":handle, "name":labels.get(handle,f"Regra #{handle}"),
-                           "packets":pkts, "bytes":byt, "expr":expressions(r)})
+            managed = table_name == TABLE
+            label = labels.get(handle, f"Regra #{handle}") if managed else "Política PoC existente (legado)"
+            result.append({"handle":handle, "name":label, "managed":managed,
+                           "table":table_name, "packets":pkts, "bytes":byt, "expr":expressions(r)})
         return result
 
 def build_rule(body):
@@ -137,9 +143,9 @@ def add_rule(body):
     name, cmd = build_rule(body)
     with LOCK:
         ensure_table()
-        before = {r["handle"] for r in fetch_state()}
+        before = {r["handle"] for r in fetch_state() if r["managed"]}
         nft(cmd)
-        after = {r["handle"] for r in fetch_state()}
+        after = {r["handle"] for r in fetch_state() if r["managed"]}
         new = after - before
         handle = max(new) if new else max(after)
         with dbconn() as c:
@@ -151,7 +157,7 @@ def add_rule(body):
 def delete_rule(handle):
     handle = int(handle)
     with LOCK:
-        present = {r["handle"] for r in fetch_state()}
+        present = {r["handle"] for r in fetch_state() if r["managed"]}
         if handle not in present:
             raise ValueError("Regra não encontrada")
         nft(f"delete rule bridge {TABLE} forward handle {handle}")
@@ -270,7 +276,7 @@ pre{max-height:230px;overflow:auto;white-space:pre-wrap;font-size:11px;color:#a7
 <main><header><div><div class="small">SECURITY OPERATIONS / NETWORK DEFENSE</div><h1>Visão geral de mitigação</h1><p>Controle operacional · inspeção inline · observabilidade de políticas nftables</p></div>
 <div class="controls"><span id="status" class="pill bad">● Verificando Shield</span><button class="ghost" id="refresh">↻ Atualizar</button><button class="ghost" id="logout">Sair</button></div></header>
 <section id="overview"><div class="grid">
-<div class="tile"><div class="label">Pacotes descartados</div><div class="num" id="drops">—</div><div class="desc">Acumulado dos contadores atuais</div></div>
+<div class="tile"><div class="label">Pacotes descartados</div><div class="num" id="drops">—</div><div class="desc">Contadores atuais, incluindo regra PoC legada</div></div>
 <div class="tile"><div class="label">Bytes descartados</div><div class="num" id="bytes">—</div><div class="desc">Ação DROP · regras gerenciadas</div></div>
 <div class="tile"><div class="label">Políticas ativas</div><div class="num" id="count">—</div><div class="desc">nftables / bridge forward</div></div>
 <div class="tile"><div class="label">Plano de controle</div><div class="num" style="font-size:20px" id="health">Verificando</div><div class="desc" id="target">Shield 172.31.253.14</div></div>
@@ -281,7 +287,7 @@ pre{max-height:230px;overflow:auto;white-space:pre-wrap;font-size:11px;color:#a7
 <div class="flowline"><div class="flowbox">Upstream<br>AS64510</div><span class="arrow">→</span><div class="flowbox shield">Shield L2<br>ens3 / ens4</div><span class="arrow">→</span><div class="flowbox">ASBR<br>AS64520</div></div>
 <div style="margin-top:24px;border-top:1px solid #263751;padding-top:18px"><div class="small">Destino protegido</div><div style="font-size:21px;margin-top:8px;font-weight:700">203.0.113.10</div><p>CE AS64530 · HTTP :8080</p></div>
 </div></div></section>
-<section id="rules"><div class="panel"><div class="barhead"><div><h2>Regras de mitigação</h2><div class="sub">Somente tabela bridge/nottina_ui · entrada ens3</div></div><button class="action" id="add">+ Nova regra</button></div>
+<section id="rules"><div class="panel"><div class="barhead"><div><h2>Regras de mitigação</h2><div class="sub">Regras do console + tabela experimental existente · entrada ens3</div></div><button class="action" id="add">+ Nova regra</button></div>
 <div style="overflow:auto"><table><thead><tr><th>Regra</th><th>Condição nftables</th><th>Pacotes</th><th>Bytes</th><th>Ações</th></tr></thead><tbody id="rules-body"><tr><td colspan="5" class="empty">Consultando regras...</td></tr></tbody></table></div></div></section>
 <section id="activity"><div class="panel"><h2>Registro de auditoria</h2><div class="sub">Ações executadas pelo painel nesta instalação</div><div id="audit" class="status">Aguardando dados...</div></div></section>
 <footer class="status" style="padding-bottom:25px">Nottina Shield · PoC técnica · alterações aplicadas ao nftables real da VM Shield. Sem regras automáticas.</footer>
@@ -327,7 +333,8 @@ async function refresh(){
  for(let rule of d.rules){
   let tr=document.createElement('tr'),txt=JSON.stringify(rule.expr);
   tr.innerHTML='<td><b>'+escapeHTML(rule.name)+'</b><div class="small">handle '+rule.handle+'</div></td><td><details><summary><code>Inspecionar condições</code></summary><pre>'+escapeHTML(JSON.stringify(rule.expr,null,2))+'</pre></details></td><td>'+fmt(rule.packets)+'</td><td>'+bytes(rule.bytes)+'</td><td></td>';
-  let btn=document.createElement('button');btn.className='danger';btn.textContent='Remover';btn.onclick=()=>remove(rule.handle,rule.name);tr.lastElementChild.appendChild(btn);body.appendChild(tr);
+  if(rule.managed){let btn=document.createElement('button');btn.className='danger';btn.textContent='Remover';btn.onclick=()=>remove(rule.handle,rule.name);tr.lastElementChild.appendChild(btn)}
+  else {tr.lastElementChild.textContent='Somente leitura'}body.appendChild(tr);
  }
  el('audit').innerHTML=d.activity.length?d.activity.map(x=>'<div style="padding:12px;border-bottom:1px solid #263449"><span class="tag">'+escapeHTML(x.action)+'</span> <span style="color:#7c95b2">'+escapeHTML(x.ts)+'</span><div style="margin-top:8px;font-size:12px">'+escapeHTML(x.detail)+'</div></div>').join(''):'Sem eventos registrados.';
  }catch(e){lastOk=false;el('status').className='pill bad';el('status').textContent='● Shield indisponível';el('health').textContent='Sem conexão';}
