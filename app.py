@@ -178,7 +178,15 @@ def stats():
            "select ts,drops,bytes from samples order by ts desc limit 120")]
         activity=[{"ts":t,"action":a,"detail":d} for t,a,d in c.execute(
            "select ts,action,detail from audit order by id desc limit 20")]
-    return {"online":True,"host":SHIELD,"rules":rules,"drops":total,"bytes":byt,
+    ordered=list(reversed(points))
+    rate_pps=rate_bps=None
+    if len(ordered)>=2:
+        a,b=ordered[-2:]
+        dt=b["ts"]-a["ts"]
+        if dt>0 and b["drops"]>=a["drops"] and b["bytes"]>=a["bytes"]:
+            rate_pps=(b["drops"]-a["drops"])/dt
+            rate_bps=(b["bytes"]-a["bytes"])*8/dt
+    return {"drop_pps":rate_pps,"drop_bps":rate_bps,"online":True,"host":SHIELD,"rules":rules,"drops":total,"bytes":byt,
             "rule_count":len(rules),"samples":list(reversed(points)),"activity":activity,
             "uptime":int(time.time()-STARTED)}
 
