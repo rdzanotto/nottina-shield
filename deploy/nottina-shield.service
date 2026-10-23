@@ -1,0 +1,23 @@
+[Unit]
+Description=Nottina Shield PoC Control Plane
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/nottina-shield
+EnvironmentFile=/etc/nottina-shield.env
+ExecStart=/usr/bin/python3 /opt/nottina-shield/app.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/lib/nottina-shield
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target
